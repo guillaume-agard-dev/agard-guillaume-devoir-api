@@ -3,19 +3,27 @@ const express = require('express');
 const cors = require('cors');
 
 const app = express();
+const port = process.env.port || 8080;
+
+// Import des routes
+const catwaysRoutes = require('./routes/catways');
+const reservationsRoutes = require('./routes/reservations');
+const usersRoutes = require('./routes/users');
+
+
 
 // Middlewares
 app.use(cors());
 app.use(express.json());
 
-// Route test
-app.get('/', (req, res) => {
-    res.type('text/plain');
-    res.send('API Reservation Catway OK');
-});
 
-// Port d'écoute
-const port = process.env.port || 8080;
+// Utilisation des routes
+app.use('/catways', catwaysRoutes);
+app.use('/catways/:id/reservations', reservationsRoutes);
+app.use('/', usersRoutes);  // users + login/logout
+
+
+// Lancement du serveur
 app.listen(port, () => {
-    console.log(`Serveur démarré sur le port ${port}`);
+    console.log(`Serveur lancé sur http://localhost:${port}`);
 });
