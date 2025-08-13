@@ -1,9 +1,13 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const connectDB = require('./config/db');
 
 const app = express();
 const port = process.env.port || 8080;
+
+// Connexion à MongoDB
+connectDB();
 
 // Import des routes
 const catwaysRoutes = require('./routes/catways');
