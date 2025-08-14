@@ -3,27 +3,27 @@ const router = express.Router();
 const userController = require('../controllers/userController');
 
 // Lister tous les utilisateurs
-router.get('/users', (req, res) => {
+router.get('/', (req, res) => {
   res.send("Lister tous les utilisateurs");
 });
 
 // Récupérer un utilisateur par email
-router.get('/users/:email', (req, res) => {
+router.get('/:email', (req, res) => {
   res.send(`Détails de l'utilisateur avec l'email ${req.params.email}`);
 });
 
 // Créer un utilisateur
-router.post('/users', (req, res) => {
+router.post('/', (req, res) => {
   res.send("Créer un utilisateur");
 });
 
 // Modifier un utilisateur
-router.put('/users/:email', (req, res) => {
+router.put('/:email', (req, res) => {
   res.send(`Modifier l'utilisateur avec l'email ${req.params.email}`);
 });
 
 // Supprimer un utilisateur
-router.delete('/users/:email', (req, res) => {
+router.delete('/:email', (req, res) => {
   res.send(`Supprimer l'utilisateur avec l'email ${req.params.email}`);
 });
 

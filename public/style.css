@@ -1,0 +1,82 @@
+header {
+  color: white;
+}
+
+body {
+  background: linear-gradient(45deg, #5ec5eb, #3f5efb);
+  height: 100vh;
+  font-family: arial, sans-serif;
+  text-align: center;
+  justify-items: center;
+}
+
+form {
+  background: rgba(255, 255, 255, 0.4);
+  padding: 1rem;
+  height: auto;
+  border-radius: 20px;
+  border-left: 1px solid rgba(255, 255, 255, 0.3);
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 20px 20px 40px -6px rgba(0, 0, 0, 0.2);
+  text-align: center;
+}
+
+form p {
+  color: white;
+  font-weight: 500;
+  font-size: 1.4rem;
+  margin-bottom: 10px;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+form a {
+  text-decoration: none;
+  color: #ddd;
+  font-size: 12px;
+}
+
+form a:hover {
+  text-shadow: 2px 2px 6px #00000040;
+}
+
+form a:active {
+  text-shadow: none;
+}
+
+input {
+  border: none;
+  padding: 1rem;
+  width: 200px;
+  border-radius: 50px;
+  box-shadow: 4px 4px 60px rgba(0, 0, 0, 0.2);
+  color: white;
+  font-weight: 500;
+  transition: all 0.3s;
+  margin-bottom: 1em;
+}
+
+input[type="button"] {
+  background-color: #3f5efb;
+  margin-top: 10px;
+  width: 150px;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+input[type="button"]:hover {
+  background-color: #fc466b;
+}
+
+.docapi a {
+  text-decoration: none;
+  color: white;
+}
+
+.docapi a:hover {
+  text-shadow: 2px 2px 6px #00000040;
+  text-decoration: underline;
+}
+
+.docapi {
+  margin-top: 2em;
+}

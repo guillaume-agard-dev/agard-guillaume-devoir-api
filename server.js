@@ -9,6 +9,9 @@ const port = process.env.port || 8080;
 // Connexion à MongoDB
 connectDB();
 
+// Page d'accueil
+app.use(express.static('public'));
+
 // Import des routes
 const catwaysRoutes = require('./routes/catways');
 const reservationsRoutes = require('./routes/reservations');
