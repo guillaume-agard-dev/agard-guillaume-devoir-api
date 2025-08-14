@@ -15,11 +15,11 @@
 
     <main>
       <div>
-        <form>
+        <form id="loginForm">
           <p>Bienvenue</p>
-            <input type="email" placeholder="Email"><br />
-            <input type="password" placeholder="Mot de passe"><br />
-            <input type="button" value="Connexion"><br />
+            <input type="email" name="email" placeholder="Email" required><br />
+            <input type="password" name="password" placeholder="Mot de passe" required><br />
+            <button type="submit">Se connecter</button><br />
           <a href="#">Mot de passe oublié</a>
         </form>
       </div>
@@ -27,5 +27,30 @@
         <a href="#">Documentation de l'API</a>
       </div>
     </main>
+    <script>
+    document.getElementById("loginForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+      const email = e.target.email.value;
+      const password = e.target.password.value;
+
+      const res = await fetch("/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        // Sauvegarde le token pour les futures requêtes
+        localStorage.setItem("token", data.token);
+        // Redirection vers le tableau de bord
+        window.location.href = "/dashboard";
+      } else {
+        alert(data.message);
+      }
+    });
+    </script>
   </body>
 </html>

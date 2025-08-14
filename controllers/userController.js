@@ -1,30 +1,42 @@
-exports.getAll = (req, res) => {
-  res.send('Lister tous les utilisateurs');
-};
+const User = require('../models/User');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
-exports.getOne = (req, res) => {
-  res.send(`Détails de l'utilisateur avec l'email ${req.params.email}`);
-};
+exports.loginUser = async (req, res) => {
+  const { email, password } = req.body;
 
-exports.create = (req, res) => {
-  res.send('Créer un utilisateur');
-};
+  try {
+    // 1. Vérifier si l'utilisateur existe
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(401).json({ message: "Email ou mot de passe invalide" });
+    }
 
-exports.update = (req, res) => {
-  res.send(`Modifier l'utilisateur avec l'email ${req.params.email}`);
-};
+    // 2. Vérifier le mot de passe
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Email ou mot de passe invalide" });
+    }
 
-exports.remove = (req, res) => {
-  res.send(`Supprimer l'utilisateur avec l'email ${req.params.email}`);
-};
+    // 3. Créer un token JWT
+    const token = jwt.sign(
+      { id: user._id, username: user.username, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
 
+    // 4. Réponse au client
+    res.json({
+      message: "Connexion réussie",
+      token,
+      user: {
+        username: user.username,
+        email: user.email
+      }
+    });
 
-// Gestion de la connexion
-
-exports.login = (req, res) => {
-  res.send('Connexion utilisateur');
-};
-
-exports.logout = (req, res) => {
-  res.send('Déconnexion utilisateur');
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Erreur serveur" });
+  }
 };

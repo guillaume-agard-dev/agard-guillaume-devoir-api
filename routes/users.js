@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const userController = require('../controllers/userController');
+const { loginUser } = require('../controllers/userController');
 
 // Lister tous les utilisateurs
 router.get('/', (req, res) => {
@@ -28,9 +28,7 @@ router.delete('/:email', (req, res) => {
 });
 
 // Connexion
-router.post('/login', (req, res) => {
-  res.send("Connexion utilisateur");
-});
+router.post('/login', loginUser);
 
 // Déconnexion
 router.get('/logout', (req, res) => {

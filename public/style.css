@@ -49,21 +49,29 @@ input {
   width: 200px;
   border-radius: 50px;
   box-shadow: 4px 4px 60px rgba(0, 0, 0, 0.2);
+  color: black;
+  font-weight: 500;
+  transition: all 0.3s;
+  margin-bottom: 1em;
+}
+
+button {
+  background-color: #3f5efb;
+  margin-top: 10px;
+  width: 150px;
+  font-size: 1rem;
+  cursor: pointer;
+  border: none;
+  border-radius: 50px;
+  box-shadow: 4px 4px 60px rgba(0, 0, 0, 0.2);
+  padding: 1rem;
   color: white;
   font-weight: 500;
   transition: all 0.3s;
   margin-bottom: 1em;
 }
 
-input[type="button"] {
-  background-color: #3f5efb;
-  margin-top: 10px;
-  width: 150px;
-  font-size: 1rem;
-  cursor: pointer;
-}
-
-input[type="button"]:hover {
+button:hover {
   background-color: #fc466b;
 }
 
