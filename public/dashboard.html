@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="dashboard.css" />
+    <title>Tableau de bord - Russell</title>
+  </head>
+  <body>
+    <header>
+      <nav class="navbar">
+        <div class="logo">Russell</div>
+        <ul class="nav-links">
+          <li><a href="/catways.html">Catways</a></li>
+          <li><a href="/reservations.html">Réservations</a></li>
+          <li><a href="/users.html">Utilisateurs</a></li>
+          <li><a href="/docs.html">Documentation</a></li>
+          <li><button id="logout-btn">Déconnexion</button></li>
+        </ul>
+      </nav>
+      <h1>Tableau de bord</h1>
+    </header>
+
+    <main>
+      <p>
+        <strong>Utilisateur connecté :</strong> <span id="user-info"></span>
+      </p>
+      <p><strong>Date du jour :</strong> <span id="today-date"></span></p>
+
+      <h2>Réservations en cours</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Catway</th>
+            <th>Client</th>
+            <th>Bateau</th>
+            <th>Début</th>
+            <th>Fin</th>
+          </tr>
+        </thead>
+        <tbody id="reservations-table">
+          <tr>
+            <td colspan="5">Chargement...</td>
+          </tr>
+        </tbody>
+      </table>
+    </main>
+
+    <script>
+
+    // Afficher l'utilisateur connecté depuis le localStorage
+    const user = JSON.parse(localStorage.getItem('user'));
+    const userInfo = document.getElementById('user-info');
+    if (user) {
+      userInfo.textContent = `${user.username} (${user.email})`;
+    } else {
+      // Redirection si non connecté
+      window.location.href = "/";
+    }
+
+    // Afficher la date du jour
+    document.getElementById('today-date').textContent = new Date().toLocaleDateString('fr-FR');
+
+    // Charger les réservations
+    async function loadReservations() {
+      try {
+        const res = await fetch('/reservations'); // Endpoint API
+        const data = await res.json();
+        const tbody = document.getElementById('reservations-table');
+        tbody.innerHTML = '';
+        data.forEach(r => {
+          const row = `
+            <tr>
+              <td>${r.catwayNumber}</td>
+              <td>${r.clientName}</td>
+              <td>${r.boatName}</td>
+              <td>${new Date(r.startDate).toLocaleDateString('fr-FR')}</td>
+              <td>${new Date(r.endDate).toLocaleDateString('fr-FR')}</td>
+            </tr>
+          `;
+          tbody.innerHTML += row;
+        });
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    loadReservations();
+
+    // Déconnexion
+    document.getElementById('logout-btn').addEventListener('click', () => {
+      localStorage.removeItem('user');
+      window.location.href = "/";
+    });
+
+  </script>
+
+  </body>
+</html>
