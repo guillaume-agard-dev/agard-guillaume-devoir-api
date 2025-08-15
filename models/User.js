@@ -10,15 +10,16 @@ const userSchema = new mongoose.Schema({
     email: {
         type: String,
         required: true,
-        unique: true, 
+        unique: true,
+        lowercase: true, 
         match: [/^\S+@\S+\.\S+$/, "Email invalide"]
     },
     password: {
         type: String,
         required: true,
-        minlenght: 6
+        minlength: 6
     }
-});
+}, { timestamps: true });
 
 
 userSchema.pre("save", async function (next) {
