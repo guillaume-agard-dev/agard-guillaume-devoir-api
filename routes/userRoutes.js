@@ -1,4 +1,3 @@
-
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
@@ -7,51 +6,45 @@ const protect = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
-// Créer un utilisateur (inscription)
-// POST /users/register
-router.post("/register", async (req, res) => {
-  const { username, email, password } = req.body;
-
+/**
+ * POST /users/register
+ * - utilise le pre('save') pour hasher
+ * - email unique
+ * - On peut retirer `protect` si l’inscription doit être publique.
+ */
+router.post("/register", /* protect, */ async (req, res) => {
   try {
-    // Vérifier si l'utilisateur existe déjà
-    const userExists = await User.findOne({ email });
-    if (userExists) {
-      return res.status(400).json({ message: "Email déjà utilisé" });
+    const { username, email, password } = req.body;
+
+    if (!username || !email || !password || password.length < 6) {
+      return res.status(400).json({ message: "Données invalides (mot de passe min 6 caractères)" });
     }
 
-    // Hash du mot de passe
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const exists = await User.findOne({ email });
+    if (exists) return res.status(400).json({ message: "Email déjà utilisé" });
 
-    // Création de l'utilisateur
-    const user = new User({ username, email, password: hashedPassword });
+    const user = new User({ username, email, password });
     await user.save();
 
-    res.status(201).json({ message: "Utilisateur créé avec succès" });
+    res.status(201).json({
+      message: "Utilisateur créé avec succès",
+      user: { id: user._id, username: user.username, email: user.email }
+    });
   } catch (err) {
-    console.error(err);
+    console.error("register error:", err);
     res.status(500).json({ message: "Erreur serveur" });
   }
 });
 
-// Connexion utilisateur
-// POST /users/login
 router.post("/login", async (req, res) => {
-  const { email, password } = req.body;
-
   try {
-    // Vérifier si l'utilisateur existe
+    const { email, password } = req.body;
+
     const user = await User.findOne({ email });
-    if (!user) {
+    if (!user || !(await user.matchPassword(password))) {
       return res.status(401).json({ message: "Email ou mot de passe incorrect" });
     }
 
-    // Vérifier le mot de passe
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) {
-      return res.status(401).json({ message: "Email ou mot de passe incorrect" });
-    }
-
-    // Générer un token JWT
     const token = jwt.sign(
       { id: user._id, username: user.username, email: user.email },
       process.env.JWT_SECRET || "secretkey",
@@ -61,71 +54,85 @@ router.post("/login", async (req, res) => {
     res.json({
       message: "Connexion réussie",
       token,
-      user: {
-        username: user.username,
-        email: user.email,
-      },
+      user: { username: user.username, email: user.email }
     });
   } catch (err) {
+    console.error("login error:", err);
     res.status(500).json({ message: "Erreur serveur" });
   }
 });
 
-// Déconnexion utilisateur
-// GET /users/logout
 router.get("/logout", protect, (req, res) => {
   res.json({ message: "Déconnexion réussie" });
 });
 
-// Obtenir l'utilisateur connecté
-// GET /users/me
 router.get("/me", protect, async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select("-password");
-    res.json(user);
+    const me = await User.findById(req.user.id).select("-password");
+    if (!me) return res.status(404).json({ message: "Utilisateur non trouvé" });
+    res.json(me);
   } catch (err) {
+    console.error("me error:", err);
     res.status(500).json({ message: "Erreur serveur" });
   }
 });
 
-// CRUD Utilisateurs
-// Liste des utilisateurs
 router.get("/", protect, async (req, res) => {
-  const users = await User.find().select("-password");
-  res.json(users);
-});
-
-// Récupérer un utilisateur par email
-router.get("/:email", protect, async (req, res) => {
-  const user = await User.findOne({ email: req.params.email }).select("-password");
-  if (!user) return res.status(404).json({ message: "Utilisateur non trouvé" });
-  res.json(user);
-});
-
-// Modifier un utilisateur
-router.put("/:email", protect, async (req, res) => {
-  const { username, password } = req.body;
-  let updateData = { username };
-
-  if (password) {
-    updateData.password = await bcrypt.hash(password, 10);
+  try {
+    const users = await User.find().select("-password").sort({ username: 1 });
+    res.json(users);
+  } catch (err) {
+    console.error("list error:", err);
+    res.status(500).json({ message: "Erreur serveur" });
   }
-
-  const updatedUser = await User.findOneAndUpdate(
-    { email: req.params.email },
-    updateData,
-    { new: true }
-  ).select("-password");
-
-  if (!updatedUser) return res.status(404).json({ message: "Utilisateur non trouvé" });
-  res.json(updatedUser);
 });
 
-// Supprimer un utilisateur
+router.get("/:email", protect, async (req, res) => {
+  try {
+    const user = await User.findOne({ email: req.params.email }).select("-password");
+    if (!user) return res.status(404).json({ message: "Utilisateur non trouvé" });
+    res.json(user);
+  } catch (err) {
+    console.error("get error:", err);
+    res.status(500).json({ message: "Erreur serveur" });
+  }
+});
+
+router.put("/:email", protect, async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    const update = {};
+    if (username) update.username = username;
+    if (password) {
+      if (password.length < 6) {
+        return res.status(400).json({ message: "Mot de passe trop court (min 6 caractères)" });
+      }
+      update.password = await bcrypt.hash(password, 10);
+    }
+
+    const updated = await User.findOneAndUpdate(
+      { email: req.params.email },
+      update,
+      { new: true, runValidators: true, projection: { password: 0 } }
+    );
+
+    if (!updated) return res.status(404).json({ message: "Utilisateur non trouvé" });
+    res.json(updated);
+  } catch (err) {
+    console.error("update error:", err);
+    res.status(500).json({ message: "Erreur serveur" });
+  }
+});
+
 router.delete("/:email", protect, async (req, res) => {
-  const deletedUser = await User.findOneAndDelete({ email: req.params.email });
-  if (!deletedUser) return res.status(404).json({ message: "Utilisateur non trouvé" });
-  res.json({ message: "Utilisateur supprimé avec succès" });
+  try {
+    const deleted = await User.findOneAndDelete({ email: req.params.email });
+    if (!deleted) return res.status(404).json({ message: "Utilisateur non trouvé" });
+    res.json({ message: "Utilisateur supprimé avec succès" });
+  } catch (err) {
+    console.error("delete error:", err);
+    res.status(500).json({ message: "Erreur serveur" });
+  }
 });
 
 module.exports = router;

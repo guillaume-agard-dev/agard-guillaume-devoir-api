@@ -75,3 +75,7 @@ button:hover {
   display: flex;
   flex-wrap: wrap;
 }
+
+#user-form input {
+  margin: 0.5em;
+}

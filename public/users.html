@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Gestion des Utilisateurs</title>
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+<header>
+  <nav class="navbar">
+    <div class="logo">Russell</div>
+    <ul class="nav-links">
+      <li><a href="/dashboard.html">Dashboard</a></li>
+      <li><a href="/catways.html">Catways</a></li>
+      <li><a href="/reservations.html">Réservations</a></li>
+      <li><a href="/users.html">Utilisateurs</a></li>
+      <li><a href="/docs.html">Documentation</a></li>
+      <li><button id="logout-btn">Déconnexion</button></li>
+    </ul>
+  </nav>
+  <h1>Gestion des Utilisateurs</h1>
+</header>
+
+<main>
+  <section>
+    <h2>Ajouter / Modifier un utilisateur</h2>
+    <form id="user-form">
+      <input type="hidden" id="editing" value="false">
+      <input type="hidden" id="originalEmail">
+
+      <div>
+        <label>Nom d'utilisateur :
+          <input type="text" id="username" required>
+        </label>
+      </div>
+
+      <div>
+        <label>Email :
+          <input type="email" id="email" required>
+        </label>
+      </div>
+
+      <div>
+        <label>Mot de passe :
+          <input type="password" id="password" placeholder="••••••" minlength="6">
+        </label>
+      </div>
+
+      <button type="submit">Enregistrer</button>
+      <button type="button" id="cancel-edit" style="display:none;">Annuler</button>
+    </form>
+  </section>
+
+  <section>
+    <h2>Liste des utilisateurs</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Username</th>
+          <th>Email</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="users-table">
+        <tr><td colspan="3">Chargement...</td></tr>
+      </tbody>
+    </table>
+  </section>
+</main>
+
+<script>
+  const token = localStorage.getItem('token');
+  if (!token) window.location.href = '/';
+
+  const h = (s) => document.querySelector(s);
+
+  async function loadUsers() {
+    const tbody = h('#users-table');
+    tbody.innerHTML = '<tr><td colspan="3">Chargement...</td></tr>';
+
+    const res = await fetch('/users', {
+      headers: { Authorization: 'Bearer ' + token }
+    });
+
+    if (!res.ok) {
+      tbody.innerHTML = '<tr><td colspan="3">Erreur de chargement</td></tr>';
+      return;
+    }
+
+    const users = await res.json();
+    tbody.innerHTML = '';
+    if (!users.length) {
+      tbody.innerHTML = '<tr><td colspan="3">Aucun utilisateur</td></tr>';
+      return;
+    }
+
+    users.forEach(u => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${u.username}</td>
+        <td>${u.email}</td>
+        <td>
+          <button data-action="edit" data-email="${u.email}" data-username="${u.username}">Modifier</button>
+          <button data-action="del" data-email="${u.email}">Supprimer</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // Clic sur modifier/supprimer
+  h('#users-table').addEventListener('click', async (e) => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+
+    const email = btn.getAttribute('data-email');
+
+    if (btn.dataset.action === 'del') {
+      if (!confirm('Supprimer cet utilisateur ?')) return;
+      const res = await fetch('/users/' + encodeURIComponent(email), {
+        method: 'DELETE',
+        headers: { Authorization: 'Bearer ' + token }
+      });
+      if (!res.ok) alert('Suppression impossible');
+      loadUsers();
+    }
+
+    if (btn.dataset.action === 'edit') {
+      // Pré-remplir le formulaire
+      h('#editing').value = 'true';
+      h('#originalEmail').value = email;
+      h('#username').value = btn.getAttribute('data-username');
+      h('#email').value = email;
+      h('#email').disabled = true;     // email = identifiant
+      h('#password').value = '';       // mot de passe optionnel en édition
+      h('#cancel-edit').style.display = 'inline-block';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  });
+
+  // Soumission formulaire : create/update
+  h('#user-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const editing = h('#editing').value === 'true';
+
+    const username = h('#username').value.trim();
+    const email = h('#email').value.trim();
+    const password = h('#password').value; // optionnel en update
+
+    if (!editing) {
+      // CREATE → POST /users/register
+      const res = await fetch('/users/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + token
+        },
+        body: JSON.stringify({ username, email, password })
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(()=>({message:'Erreur'}));
+        alert(err.message || 'Création impossible');
+        return;
+      }
+    } else {
+      // UPDATE → PUT /users/:email (username + password éventuel)
+      const originalEmail = h('#originalEmail').value;
+      const payload = { username };
+      if (password) payload.password = password;
+
+      const res = await fetch('/users/' + encodeURIComponent(originalEmail), {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + token
+        },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(()=>({message:'Erreur'}));
+        alert(err.message || 'Mise à jour impossible');
+        return;
+      }
+    }
+
+    // Reset form
+    e.target.reset();
+    h('#editing').value = 'false';
+    h('#originalEmail').value = '';
+    h('#email').disabled = false;
+    h('#cancel-edit').style.display = 'none';
+    loadUsers();
+  });
+
+  // Annuler l’édition
+  h('#cancel-edit').addEventListener('click', () => {
+    h('#user-form').reset();
+    h('#editing').value = 'false';
+    h('#originalEmail').value = '';
+    h('#email').disabled = false;
+    h('#cancel-edit').style.display = 'none';
+  });
+
+  // Déconnexion
+  h('#logout-btn').addEventListener('click', () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.location.href = '/';
+  });
+
+  loadUsers();
+</script>
+</body>
+</html>
