@@ -7,13 +7,13 @@ const router = express.Router();
 const reservationsPath = path.join(__dirname, '../data/reservations.json');
 
 // Toutes les réservations
-router.get('/', protect, (req, res) => {
+router.get('/catways/:catwayNumber/reservations', protect, (req, res) => {
   const reservations = JSON.parse(fs.readFileSync(reservationsPath, 'utf-8'));
   res.json(reservations);
 });
 
 // Réservations d’un catway
-router.get('/:catwayNumber/reservations', protect, (req, res) => {
+router.get('/catways/:catwayNumber/reservations', protect, (req, res) => {
   const reservations = JSON.parse(fs.readFileSync(reservationsPath, 'utf-8'));
   const filtered = reservations.filter(r => r.catwayNumber == req.params.catwayNumber);
   res.json(filtered);
@@ -29,7 +29,7 @@ router.post('/:catwayNumber/reservations', protect, (req, res) => {
 });
 
 // Modifier réservation
-router.put('/:catwayNumber/reservations/:clientName', protect, (req, res) => {
+router.put('/catways/:catwayNumber/reservations/:clientName', protect, (req, res) => {
   const reservations = JSON.parse(fs.readFileSync(reservationsPath, 'utf-8'));
   const index = reservations.findIndex(r =>
     r.catwayNumber == req.params.catwayNumber && r.clientName === req.params.clientName
@@ -42,7 +42,7 @@ router.put('/:catwayNumber/reservations/:clientName', protect, (req, res) => {
 });
 
 // Supprimer réservation
-router.delete('/:catwayNumber/reservations/:clientName', protect, (req, res) => {
+router.delete('/catways/:catwayNumber/reservations/:clientName', protect, (req, res) => {
   let reservations = JSON.parse(fs.readFileSync(reservationsPath, 'utf-8'));
   reservations = reservations.filter(r =>
     !(r.catwayNumber == req.params.catwayNumber && r.clientName === req.params.clientName)

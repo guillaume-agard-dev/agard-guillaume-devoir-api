@@ -11,7 +11,7 @@
   <nav class="navbar">
     <div class="logo">Russell</div>
     <ul class="nav-links">
-      <li><a href="/dashboard.html">Tableau de bord</a></li>
+      <li><a href="/dashboard.html">Dashboard</a></li>
       <li><a href="/catways.html">Catways</a></li>
       <li><a href="/users.html">Utilisateurs</a></li>
       <li><a href="/docs.html">Documentation</a></li>
@@ -22,84 +22,255 @@
 </header>
 
 <main>
-  <button id="add-reservation">Ajouter une réservation</button>
-  <table>
-    <thead>
-      <tr>
-        <th>Catway</th>
-        <th>Client</th>
-        <th>Bateau</th>
-        <th>Début</th>
-        <th>Fin</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody id="reservations-table">
-      <tr><td colspan="6">Chargement...</td></tr>
-    </tbody>
-  </table>
+  <section>
+    <h2>Ajouter / Modifier une réservation</h2>
+    <form id="reservation-form">
+      <input type="hidden" id="editing" value="false">
+      <input type="hidden" id="originalClientName">
+      <div>
+        <label>Catway n° :
+          <input type="number" id="catwayNumber" required min="1">
+        </label>
+      </div>
+      <div>
+        <label>Client :
+          <input type="text" id="clientName" required>
+        </label>
+      </div>
+      <div>
+        <label>Bateau :
+          <input type="text" id="boatName" required>
+        </label>
+      </div>
+      <div>
+        <label>Début :
+          <input type="date" id="startDate" required>
+        </label>
+      </div>
+      <div>
+        <label>Fin :
+          <input type="date" id="endDate" required>
+        </label>
+      </div>
+      <button type="submit">Enregistrer</button>
+      <button type="button" id="cancel-edit" style="display:none;">Annuler</button>
+    </form>
+  </section>
+
+  <section>
+    <h2>Réservations</h2>
+    <div>
+      <label>Filtrer par catway :
+        <select id="filterCatway">
+          <option value="">(Tous)</option>
+        </select>
+      </label>
+      <button id="reload">Recharger</button>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Catway</th>
+          <th>Client</th>
+          <th>Bateau</th>
+          <th>Début</th>
+          <th>Fin</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="reservations-table">
+        <tr><td colspan="6">Chargement...</td></tr>
+      </tbody>
+    </table>
+  </section>
 </main>
 
 <script>
-async function loadReservations() {
-  const res = await fetch('/reservations');
-  const data = await res.json();
-  const tbody = document.getElementById('reservations-table');
-  tbody.innerHTML = '';
-  data.forEach(r => {
-    const row = `
-      <tr>
+  const token = localStorage.getItem('token');
+  if (!token) {
+    window.location.href = '/';
+  }
+
+  // Helpers
+  const h = (sel) => document.querySelector(sel);
+  const fmt = (iso) => new Date(iso).toLocaleDateString('fr-FR');
+
+  // Charge toutes les réservations
+  async function fetchAllReservations() {
+    try {
+      const r = await fetch('/reservations', { headers: { Authorization: 'Bearer ' + token }});
+      if (r.ok) return await r.json();
+      // sinon on tombe dans le catch pour fallback
+      throw new Error('fallback');
+    } catch {
+      // Fallback via agrégation par catways
+      const rc = await fetch('/catways', { headers: { Authorization: 'Bearer ' + token }});
+      const catways = await rc.json();
+      const results = [];
+      for (const c of catways) {
+        const rr = await fetch(`/catways/${encodeURIComponent(c.catwayNumber)}/reservations`, {
+          headers: { Authorization: 'Bearer ' + token }
+        });
+        if (rr.ok) {
+          const list = await rr.json();
+          results.push(...list);
+        }
+      }
+      return results;
+    }
+  }
+
+  async function loadReservations() {
+    h('#reservations-table').innerHTML = `<tr><td colspan="6">Chargement...</td></tr>`;
+    const filter = h('#filterCatway').value;
+    let data = await fetchAllReservations();
+    // tri simple par catwayNumber puis startDate
+    data.sort((a,b) => (a.catwayNumber - b.catwayNumber) || (new Date(a.startDate) - new Date(b.startDate)));
+    if (filter) data = data.filter(r => String(r.catwayNumber) === String(filter));
+
+    const tbody = h('#reservations-table');
+    tbody.innerHTML = '';
+    if (!data.length) {
+      tbody.innerHTML = `<tr><td colspan="6">Aucune réservation</td></tr>`;
+      return;
+    }
+    for (const r of data) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
         <td>${r.catwayNumber}</td>
         <td>${r.clientName}</td>
         <td>${r.boatName}</td>
-        <td>${new Date(r.startDate).toLocaleDateString('fr-FR')}</td>
-        <td>${new Date(r.endDate).toLocaleDateString('fr-FR')}</td>
+        <td>${fmt(r.startDate)}</td>
+        <td>${fmt(r.endDate)}</td>
         <td>
-          <button onclick="editReservation(${r.catwayNumber}, '${r.clientName}')">Modifier</button>
-          <button onclick="deleteReservation(${r.catwayNumber}, '${r.clientName}')">Supprimer</button>
+          <button data-action="edit" data-catway="${r.catwayNumber}" data-client="${encodeURIComponent(r.clientName)}">Modifier</button>
+          <button data-action="del" data-catway="${r.catwayNumber}" data-client="${encodeURIComponent(r.clientName)}">Supprimer</button>
         </td>
-      </tr>
-    `;
-    tbody.innerHTML += row;
-  });
-}
-
-async function deleteReservation(catwayNumber, clientName) {
-  if (confirm("Supprimer cette réservation ?")) {
-    await fetch(`/catways/${catwayNumber}/reservations/${encodeURIComponent(clientName)}`, { method: 'DELETE' });
-    loadReservations();
+      `;
+      tbody.appendChild(tr);
+    }
   }
-}
 
-document.getElementById('add-reservation').addEventListener('click', async () => {
-  const catwayNumber = prompt("Numéro de catway :");
-  const clientName = prompt("Nom du client :");
-  const boatName = prompt("Nom du bateau :");
-  const startDate = prompt("Date début (YYYY-MM-DD) :");
-  const endDate = prompt("Date fin (YYYY-MM-DD) :");
+  // Remplit la liste des catways pour le filtre
+  async function loadCatwayFilter() {
+    const res = await fetch('/catways', { headers: { Authorization: 'Bearer ' + token }});
+    if (!res.ok) return;
+    const catways = await res.json();
+    const sel = h('#filterCatway');
+    // Nettoie sauf "(Tous)"
+    sel.querySelectorAll('option:not([value=""])').forEach(o => o.remove());
+    catways
+      .map(c => c.catwayNumber)
+      .sort((a,b)=>a-b)
+      .forEach(num => {
+        const opt = document.createElement('option');
+        opt.value = num;
+        opt.textContent = num;
+        sel.appendChild(opt);
+      });
+  }
 
-  await fetch(`/catways/${catwayNumber}/reservations`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ catwayNumber, clientName, boatName, startDate, endDate })
+  // Clics table : modifier / supprimer
+  h('#reservations-table').addEventListener('click', async (e) => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    const catwayNumber = btn.getAttribute('data-catway');
+    const clientNameEnc = btn.getAttribute('data-client');
+    const clientName = decodeURIComponent(clientNameEnc);
+
+    if (btn.dataset.action === 'del') {
+      if (!confirm("Supprimer cette réservation ?")) return;
+      await fetch(`/catways/${catwayNumber}/reservations/${encodeURIComponent(clientName)}`, {
+        method: 'DELETE',
+        headers: { Authorization: 'Bearer ' + token }
+      });
+      loadReservations();
+    }
+
+    if (btn.dataset.action === 'edit') {
+      const row = btn.closest('tr').children;
+      // Pré-remplir le formulaire
+      h('#editing').value = 'true';
+      h('#originalClientName').value = clientName;
+      h('#catwayNumber').value = catwayNumber;
+      h('#clientName').value = clientName;
+      h('#clientName').disabled = true;
+      h('#boatName').value = row[2].textContent;
+      // Conversions dates "JJ/MM/AAAA" -> "YYYY-MM-DD" si besoin
+      const d1 = row[3].textContent.split('/').reverse().join('-');
+      const d2 = row[4].textContent.split('/').reverse().join('-');
+      h('#startDate').value = d1;
+      h('#endDate').value = d2;
+      h('#cancel-edit').style.display = 'inline-block';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   });
-  loadReservations();
-});
 
-async function editReservation(catwayNumber, clientName) {
-  const boatName = prompt("Nouveau nom du bateau :");
-  const startDate = prompt("Nouvelle date début (YYYY-MM-DD) :");
-  const endDate = prompt("Nouvelle date fin (YYYY-MM-DD) :");
+  // Soumission formulaire (create / update)
+  h('#reservation-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const editing = h('#editing').value === 'true';
+    const catwayNumber = Number(h('#catwayNumber').value);
+    const clientName = h('#clientName').value.trim();
+    const boatName = h('#boatName').value.trim();
+    const startDate = h('#startDate').value;
+    const endDate = h('#endDate').value;
 
-  await fetch(`/catways/${catwayNumber}/reservations/${encodeURIComponent(clientName)}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ boatName, startDate, endDate })
+    if (!editing) {
+      // CREATE
+      await fetch(`/catways/${catwayNumber}/reservations`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + token
+        },
+        body: JSON.stringify({ catwayNumber, clientName, boatName, startDate, endDate })
+      });
+    } else {
+      // UPDATE (clientName sert d'identifiant, on ne le change pas)
+      const originalClientName = h('#originalClientName').value;
+      await fetch(`/catways/${catwayNumber}/reservations/${encodeURIComponent(originalClientName)}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + token
+        },
+        body: JSON.stringify({ boatName, startDate, endDate })
+      });
+    }
+
+    // Reset form
+    h('#reservation-form').reset();
+    h('#editing').value = 'false';
+    h('#clientName').disabled = false;
+    h('#cancel-edit').style.display = 'none';
+    loadReservations();
   });
-  loadReservations();
-}
 
-loadReservations();
+  // Annuler l'édition
+  h('#cancel-edit').addEventListener('click', () => {
+    h('#reservation-form').reset();
+    h('#editing').value = 'false';
+    h('#clientName').disabled = false;
+    h('#cancel-edit').style.display = 'none';
+  });
+
+  // Filtre + reload
+  h('#filterCatway').addEventListener('change', loadReservations);
+  h('#reload').addEventListener('click', loadReservations);
+
+  // Déconnexion
+  h('#logout-btn').addEventListener('click', () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.location.href = '/';
+  });
+
+  // Initial load
+  (async () => {
+    await loadCatwayFilter();
+    await loadReservations();
+  })();
 </script>
 </body>
 </html>
