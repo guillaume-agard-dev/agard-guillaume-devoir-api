@@ -23,7 +23,7 @@
 
     <main>
       <p>
-        <strong>Utilisateur connecté :</strong> <span id="user-info"></span>
+        <strong>Utilisateur connecté :</strong> <span id="user-info">Chargement...</span>
       </p>
       <p><strong>Date du jour :</strong> <span id="today-date"></span></p>
 
@@ -47,24 +47,38 @@
     </main>
 
     <script>
-
-    // Afficher l'utilisateur connecté depuis le localStorage
-    const user = JSON.parse(localStorage.getItem('user'));
-    const userInfo = document.getElementById('user-info');
-    if (user) {
-      userInfo.textContent = `${user.username} (${user.email})`;
-    } else {
-      // Redirection si non connecté
-      window.location.href = "/";
-    }
-
     // Afficher la date du jour
     document.getElementById('today-date').textContent = new Date().toLocaleDateString('fr-FR');
 
-    // Charger les réservations
+    const token = localStorage.getItem('token');
+    if (!token) {
+      window.location.href = "/";
+    }
+
+    // Récupérer l'utilisateur connecté depuis l'API
+    async function loadUser() {
+      try {
+        const res = await fetch('/users/me', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (!res.ok) throw new Error('Token invalide ou expiré');
+        const user = await res.json();
+        document.getElementById('user-info').textContent = `${user.username} (${user.email})`;
+      } catch (err) {
+        console.error(err);
+        localStorage.removeItem('token');
+        window.location.href = "/";
+      }
+    }
+    loadUser();
+
+    // Charger les réservations depuis l'API
     async function loadReservations() {
       try {
-        const res = await fetch('/reservations'); // Endpoint API
+        const res = await fetch('/reservations', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (!res.ok) throw new Error('Impossible de récupérer les réservations');
         const data = await res.json();
         const tbody = document.getElementById('reservations-table');
         tbody.innerHTML = '';
@@ -82,17 +96,18 @@
         });
       } catch (err) {
         console.error(err);
+        const tbody = document.getElementById('reservations-table');
+        tbody.innerHTML = '<tr><td colspan="5">Erreur lors du chargement des réservations</td></tr>';
       }
     }
     loadReservations();
 
     // Déconnexion
     document.getElementById('logout-btn').addEventListener('click', () => {
-      localStorage.removeItem('user');
+      localStorage.removeItem('token');
       window.location.href = "/";
     });
-
-  </script>
+    </script>
 
   </body>
 </html>
