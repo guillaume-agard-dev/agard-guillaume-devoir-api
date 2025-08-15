@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="dashboard.css" />
+  <title>Gestion des Catways</title>
+</head>
+<body>
+  <header>
+    <nav class="navbar">
+      <div class="logo">Russell</div>
+      <ul class="nav-links">
+        <li><a href="/dashboard.html">Tableau de bord</a></li>
+        <li><a href="/reservations.html">Réservations</a></li>
+        <li><a href="/users.html">Utilisateurs</a></li>
+        <li><a href="/docs.html">Documentation</a></li>
+        <li><button id="logout-btn">Déconnexion</button></li>
+      </ul>
+    </nav>
+    <h1>Gestion des Catways</h1>
+  </header>
+
+  <main>
+    <h2>Liste des Catways</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Numéro</th>
+          <th>Type</th>
+          <th>État</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="catways-table">
+        <tr><td colspan="4">Chargement...</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Ajouter / Modifier un Catway</h2>
+    <form id="catway-form">
+      <label>Numéro: <input type="number" id="catwayNumber" required /></label>
+      <label>Type: 
+        <select id="catwayType" required>
+          <option value="short">Short</option>
+          <option value="long">Long</option>
+        </select>
+      </label>
+      <label>État: <input type="text" id="catwayState" required /></label>
+      <button type="submit">Enregistrer</button>
+    </form>
+  </main>
+
+  <script>
+    const token = localStorage.getItem("token");
+    if (!token) window.location.href = "/";
+
+    const API_URL = "/catways";
+    let editingCatway = null;
+
+    // Charger la liste
+    async function loadCatways() {
+      const res = await fetch(API_URL, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      const tbody = document.getElementById("catways-table");
+      tbody.innerHTML = "";
+      data.forEach(catway => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${catway.catwayNumber}</td>
+          <td>${catway.catwayType}</td>
+          <td>${catway.catwayState}</td>
+          <td>
+            <button onclick="editCatway(${catway.catwayNumber})">Modifier</button>
+            <button onclick="deleteCatway(${catway.catwayNumber})">Supprimer</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Ajouter ou modifier
+    document.getElementById("catway-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const catwayNumber = document.getElementById("catwayNumber").value;
+      const catwayType = document.getElementById("catwayType").value;
+      const catwayState = document.getElementById("catwayState").value;
+
+      const method = editingCatway ? "PUT" : "POST";
+      const url = editingCatway ? `${API_URL}/${editingCatway}` : API_URL;
+
+      await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ catwayNumber: Number(catwayNumber), catwayType, catwayState })
+      });
+
+      editingCatway = null;
+      e.target.reset();
+      loadCatways();
+    });
+
+    // Modifier un catway
+    window.editCatway = async (num) => {
+      const res = await fetch(API_URL, { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      const catway = data.find(c => c.catwayNumber === num);
+      if (catway) {
+        document.getElementById("catwayNumber").value = catway.catwayNumber;
+        document.getElementById("catwayType").value = catway.catwayType;
+        document.getElementById("catwayState").value = catway.catwayState;
+        editingCatway = num;
+      }
+    };
+
+    // Supprimer un catway
+    window.deleteCatway = async (num) => {
+      if (confirm("Supprimer ce catway ?")) {
+        await fetch(`${API_URL}/${num}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        loadCatways();
+      }
+    };
+
+    // Déconnexion
+    document.getElementById("logout-btn").addEventListener("click", () => {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      window.location.href = "/";
+    });
+
+    loadCatways();
+  </script>
+</body>
+</html>
