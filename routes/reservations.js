@@ -1,20 +1,54 @@
 const express = require('express');
-const router = express.Router({ mergeParams: true });
-const reservationController = require('../controllers/reservationController');
+const fs = require('fs');
+const path = require('path');
+const protect = require("../middleware/authMiddleware");
 
-// Lister toutes les réservations d’un catway
-router.get('/', reservationController.getAll);
+const router = express.Router();
+const reservationsPath = path.join(__dirname, '../data/reservations.json');
 
-// Récupérer une réservation précise
-router.get('/:idReservation', reservationController.getOne);
+// Toutes les réservations
+router.get('/', protect, (req, res) => {
+  const reservations = JSON.parse(fs.readFileSync(reservationsPath, 'utf-8'));
+  res.json(reservations);
+});
 
-// Créer une réservation
-router.post('/', reservationController.create);
+// Réservations d’un catway
+router.get('/:catwayNumber/reservations', protect, (req, res) => {
+  const reservations = JSON.parse(fs.readFileSync(reservationsPath, 'utf-8'));
+  const filtered = reservations.filter(r => r.catwayNumber == req.params.catwayNumber);
+  res.json(filtered);
+});
 
-// Modifier une réservation
-router.put('/:idReservation', reservationController.update);
+// Nouvelle réservation
+router.post('/:catwayNumber/reservations', protect, (req, res) => {
+  const reservations = JSON.parse(fs.readFileSync(reservationsPath, 'utf-8'));
+  const newReservation = { ...req.body, catwayNumber: parseInt(req.params.catwayNumber) };
+  reservations.push(newReservation);
+  fs.writeFileSync(reservationsPath, JSON.stringify(reservations, null, 2));
+  res.json(newReservation);
+});
 
-// Supprimer une réservation
-router.delete('/:idReservation', reservationController.remove);
+// Modifier réservation
+router.put('/:catwayNumber/reservations/:clientName', protect, (req, res) => {
+  const reservations = JSON.parse(fs.readFileSync(reservationsPath, 'utf-8'));
+  const index = reservations.findIndex(r =>
+    r.catwayNumber == req.params.catwayNumber && r.clientName === req.params.clientName
+  );
+  if (index === -1) return res.status(404).json({ message: "Réservation non trouvée" });
+
+  reservations[index] = { ...reservations[index], ...req.body };
+  fs.writeFileSync(reservationsPath, JSON.stringify(reservations, null, 2));
+  res.json(reservations[index]);
+});
+
+// Supprimer réservation
+router.delete('/:catwayNumber/reservations/:clientName', protect, (req, res) => {
+  let reservations = JSON.parse(fs.readFileSync(reservationsPath, 'utf-8'));
+  reservations = reservations.filter(r =>
+    !(r.catwayNumber == req.params.catwayNumber && r.clientName === req.params.clientName)
+  );
+  fs.writeFileSync(reservationsPath, JSON.stringify(reservations, null, 2));
+  res.json({ message: "Réservation supprimée" });
+});
 
 module.exports = router;

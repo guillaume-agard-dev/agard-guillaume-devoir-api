@@ -27,7 +27,7 @@ app.use(express.json());
 
 // Utilisation des routes
 app.use('/catways', catwaysRoutes);
-app.use('/catways/:id/reservations', reservationsRoutes);
+app.use('/catways', reservationsRoutes);
 app.use('/users', usersRoutes);
 
 

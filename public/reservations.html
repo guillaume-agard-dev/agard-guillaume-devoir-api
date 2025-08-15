@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Gestion des Réservations</title>
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+<header>
+  <nav class="navbar">
+    <div class="logo">Russell</div>
+    <ul class="nav-links">
+      <li><a href="/dashboard.html">Tableau de bord</a></li>
+      <li><a href="/catways.html">Catways</a></li>
+      <li><a href="/users.html">Utilisateurs</a></li>
+      <li><a href="/docs.html">Documentation</a></li>
+      <li><button id="logout-btn">Déconnexion</button></li>
+    </ul>
+  </nav>
+  <h1>Gestion des Réservations</h1>
+</header>
+
+<main>
+  <button id="add-reservation">Ajouter une réservation</button>
+  <table>
+    <thead>
+      <tr>
+        <th>Catway</th>
+        <th>Client</th>
+        <th>Bateau</th>
+        <th>Début</th>
+        <th>Fin</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="reservations-table">
+      <tr><td colspan="6">Chargement...</td></tr>
+    </tbody>
+  </table>
+</main>
+
+<script>
+async function loadReservations() {
+  const res = await fetch('/reservations');
+  const data = await res.json();
+  const tbody = document.getElementById('reservations-table');
+  tbody.innerHTML = '';
+  data.forEach(r => {
+    const row = `
+      <tr>
+        <td>${r.catwayNumber}</td>
+        <td>${r.clientName}</td>
+        <td>${r.boatName}</td>
+        <td>${new Date(r.startDate).toLocaleDateString('fr-FR')}</td>
+        <td>${new Date(r.endDate).toLocaleDateString('fr-FR')}</td>
+        <td>
+          <button onclick="editReservation(${r.catwayNumber}, '${r.clientName}')">Modifier</button>
+          <button onclick="deleteReservation(${r.catwayNumber}, '${r.clientName}')">Supprimer</button>
+        </td>
+      </tr>
+    `;
+    tbody.innerHTML += row;
+  });
+}
+
+async function deleteReservation(catwayNumber, clientName) {
+  if (confirm("Supprimer cette réservation ?")) {
+    await fetch(`/catways/${catwayNumber}/reservations/${encodeURIComponent(clientName)}`, { method: 'DELETE' });
+    loadReservations();
+  }
+}
+
+document.getElementById('add-reservation').addEventListener('click', async () => {
+  const catwayNumber = prompt("Numéro de catway :");
+  const clientName = prompt("Nom du client :");
+  const boatName = prompt("Nom du bateau :");
+  const startDate = prompt("Date début (YYYY-MM-DD) :");
+  const endDate = prompt("Date fin (YYYY-MM-DD) :");
+
+  await fetch(`/catways/${catwayNumber}/reservations`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ catwayNumber, clientName, boatName, startDate, endDate })
+  });
+  loadReservations();
+});
+
+async function editReservation(catwayNumber, clientName) {
+  const boatName = prompt("Nouveau nom du bateau :");
+  const startDate = prompt("Nouvelle date début (YYYY-MM-DD) :");
+  const endDate = prompt("Nouvelle date fin (YYYY-MM-DD) :");
+
+  await fetch(`/catways/${catwayNumber}/reservations/${encodeURIComponent(clientName)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ boatName, startDate, endDate })
+  });
+  loadReservations();
+}
+
+loadReservations();
+</script>
+</body>
+</html>
