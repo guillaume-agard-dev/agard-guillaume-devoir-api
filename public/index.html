@@ -23,33 +23,48 @@
         </form>
       </div>
       <div class="docapi">
-        <a href="/docs.html">Documentation de l'API</a>
+        <a href="/docs.html" target="_blank">Documentation de l'API</a>
       </div>
     </main>
     <script>
-    document.getElementById("loginForm").addEventListener("submit", async (e) => {
-    e.preventDefault();
+      const form = document.getElementById("loginForm");
+      const showError = (msg) => alert(msg); // remplace par un <p id="err"> si tu veux
 
-      const email = e.target.email.value;
-      const password = e.target.password.value;
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const email = e.target.email.value.trim();
+        const password = e.target.password.value;
 
-      const res = await fetch("/users/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password })
+        try {
+          const res = await fetch("/users/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password })
+          });
+
+          const data = await res.json().catch(() => ({}));
+          console.log("LOGIN → status:", res.status, "payload:", data);
+
+          if (!res.ok) {
+            showError(data.message || "Erreur de connexion");
+            return;
+          }
+
+          if (!data.token) {
+            showError("Réponse inattendue: pas de token reçu");
+            return;
+          }
+
+          localStorage.setItem("token", data.token);
+          localStorage.setItem("user", JSON.stringify(data.user || {}));
+
+          // redirection vers le fichier statique
+          window.location.href = "/dashboard.html";
+        } catch (err) {
+          console.error("LOGIN error:", err);
+          showError("Erreur réseau/serveur");
+        }
       });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        // Sauvegarde le token pour les futures requêtes
-        localStorage.setItem("token", data.token);
-        // Redirection vers le tableau de bord
-        window.location.href = "/dashboard";
-      } else {
-        alert(data.message);
-      }
-    });
     </script>
   </body>
 </html>

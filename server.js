@@ -16,16 +16,12 @@ app.use(express.json());
 // Page d'accueil
 app.use(express.static('public'));
 
-// Import des routes
-const catwaysRoutes = require('./routes/catways');
-const reservationsRoutes = require('./routes/reservations');
-const usersRoutes = require('./routes/userRoutes');
 
 
 // Utilisation des routes
-app.use('/catways', catwaysRoutes);
-app.use('/catways', reservationsRoutes);
-app.use('/users', usersRoutes);
+app.use('/catways', require('./routes/catways'));
+app.use('/catways', require('./routes/reservations'));
+app.use('/users', require('./routes/userRoutes'));
 
 
 // Lancement du serveur
