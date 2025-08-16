@@ -1,0 +1,36 @@
+body {
+  font-family: system-ui, Arial, sans-serif;
+  max-width: 900px;
+  margin: 40px auto;
+  padding: 0 16px;
+  line-height: 1.5;
+}
+
+code,
+pre {
+  background: #f6f8fa;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+}
+
+code {
+  padding: 0.15rem 0.35rem;
+}
+
+pre {
+  padding: 12px;
+  overflow: auto;
+}
+
+h1,
+h2 {
+  margin-top: 1.5rem;
+}
+
+.ok {
+  background: #e8fff0;
+  border: 1px solid #b7f0cb;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  display: inline-block;
+}

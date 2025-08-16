@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="docs.css">
+  <title>Documentation API – Russell</title>
+</head>
+
+<body>
+
+  <h1>Documentation de l’API</h1>
+  <p>Base URL : <code id="base">/</code></p>
+  <p id="authState"></p>
+
+  <h2>Authentification (JWT)</h2>
+  <ul>
+    <li><code>POST /users/login</code> → retourne <code>{ token, user }</code></li>
+    <li><code>GET /users/me</code> (header <code>Authorization: Bearer &lt;token&gt;</code>)</li>
+  </ul>
+  <pre>{
+  "email": "admin@example.com",
+  "password": "123456"
+    }</pre>
+
+  <h2>Utilisateurs</h2>
+  <ul>
+    <li><code>GET /users</code></li>
+    <li><code>GET /users/:email</code></li>
+    <li><code>POST /users/register</code></li>
+    <li><code>PUT /users/:email</code></li>
+    <li><code>DELETE /users/:email</code></li>
+  </ul>
+
+  <h2>Catways</h2>
+  <ul>
+    <li><code>GET /catways</code></li>
+    <li><code>GET /catways/:id</code> (<em>id = catwayNumber</em>)</li>
+    <li><code>POST /catways</code></li>
+    <li><code>PUT /catways/:id</code> (seul <code>catwayState</code> modifiable)</li>
+    <li><code>DELETE /catways/:id</code></li>
+  </ul>
+
+  <h2>Réservations (sous-ressource Catway)</h2>
+  <ul>
+    <li><code>GET /catways/:id/reservations</code></li>
+    <li><code>GET /catways/:id/reservations/:reservationId</code></li>
+    <li><code>POST /catways/:id/reservations</code></li>
+    <li><code>PUT /catways/:id/reservations/:reservationId</code></li>
+    <li><code>DELETE /catways/:id/reservations/:reservationId</code></li>
+    <li><code>GET /reservations</code> (toutes) – pratique pour le dashboard</li>
+  </ul>
+
+  <h2>Exemple fetch</h2>
+  <pre>fetch('/catways', { headers: { Authorization: 'Bearer ' + localStorage.getItem('token') }})
+  .then(r => r.json()).then(console.log);</pre>
+
+  <script>
+    document.getElementById('base').textContent = location.origin + '/';
+    const token = localStorage.getItem('token');
+    document.getElementById('authState').innerHTML = token
+      ? '<span class="ok">Token détecté : les endpoints protégés sont testables depuis ce navigateur.</span>'
+      : 'Pas de token trouvé. Connectez-vous depuis la page d’accueil.';
+  </script>
+</body>
+</html>
