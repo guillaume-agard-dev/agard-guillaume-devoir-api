@@ -13,7 +13,7 @@ connectDB();
 // Middlewares
 app.use(cors());
 app.use(express.json());
-// Page d'accueil
+// Page HTML
 app.use(express.static('public'));
 
 

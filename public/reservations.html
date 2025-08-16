@@ -100,10 +100,9 @@
     try {
       const r = await fetch('/reservations', { headers: { Authorization: 'Bearer ' + token }});
       if (r.ok) return await r.json();
-      // sinon on tombe dans le catch pour fallback
+
       throw new Error('fallback');
     } catch {
-      // Fallback via agrégation par catways
       const rc = await fetch('/catways', { headers: { Authorization: 'Bearer ' + token }});
       const catways = await rc.json();
       const results = [];
@@ -170,7 +169,7 @@
       });
   }
 
-  // Clics table : modifier / supprimer
+  // Clics : modifier / supprimer
   h('#reservations-table').addEventListener('click', async (e) => {
     const btn = e.target.closest('button');
     if (!btn) return;
@@ -227,7 +226,7 @@
         body: JSON.stringify({ catwayNumber, clientName, boatName, startDate, endDate })
       });
     } else {
-      // UPDATE (clientName sert d'identifiant, on ne le change pas)
+      // UPDATE (clientName sert d'identifiant)
       const originalClientName = h('#originalClientName').value;
       await fetch(`/catways/${catwayNumber}/reservations/${encodeURIComponent(originalClientName)}`, {
         method: 'PUT',
