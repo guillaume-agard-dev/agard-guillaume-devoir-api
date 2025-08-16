@@ -8,18 +8,15 @@ const router = express.Router();
 
 /**
  * POST /users/register
- * - utilise le pre('save') pour hasher
- * - email unique
- * - On peut retirer `protect` si l’inscription doit être publique.
+ * - Inscription utilisateur
+ * - On peux mettre protect si on veux restreindre la création aux admins
  */
 router.post("/register", /* protect, */ async (req, res) => {
   try {
     const { username, email, password } = req.body;
-
     if (!username || !email || !password || password.length < 6) {
       return res.status(400).json({ message: "Données invalides (mot de passe min 6 caractères)" });
     }
-
     const exists = await User.findOne({ email });
     if (exists) return res.status(400).json({ message: "Email déjà utilisé" });
 
@@ -36,11 +33,15 @@ router.post("/register", /* protect, */ async (req, res) => {
   }
 });
 
+/**
+ * POST /users/login
+ * - Connexion → JWT
+ */
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
-
     const user = await User.findOne({ email });
+
     if (!user || !(await user.matchPassword(password))) {
       return res.status(401).json({ message: "Email ou mot de passe incorrect" });
     }
@@ -62,7 +63,7 @@ router.post("/login", async (req, res) => {
   }
 });
 
-router.get("/logout", protect, (req, res) => {
+router.get("/logout", protect, (_req, res) => {
   res.json({ message: "Déconnexion réussie" });
 });
 
@@ -77,7 +78,8 @@ router.get("/me", protect, async (req, res) => {
   }
 });
 
-router.get("/", protect, async (req, res) => {
+// LIST 
+router.get("/", protect, async (_req, res) => {
   try {
     const users = await User.find().select("-password").sort({ username: 1 });
     res.json(users);
@@ -87,6 +89,7 @@ router.get("/", protect, async (req, res) => {
   }
 });
 
+// GET by email
 router.get("/:email", protect, async (req, res) => {
   try {
     const user = await User.findOne({ email: req.params.email }).select("-password");
@@ -98,6 +101,7 @@ router.get("/:email", protect, async (req, res) => {
   }
 });
 
+// UPDATE (username/password)
 router.put("/:email", protect, async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -107,6 +111,7 @@ router.put("/:email", protect, async (req, res) => {
       if (password.length < 6) {
         return res.status(400).json({ message: "Mot de passe trop court (min 6 caractères)" });
       }
+
       update.password = await bcrypt.hash(password, 10);
     }
 
@@ -115,7 +120,6 @@ router.put("/:email", protect, async (req, res) => {
       update,
       { new: true, runValidators: true, projection: { password: 0 } }
     );
-
     if (!updated) return res.status(404).json({ message: "Utilisateur non trouvé" });
     res.json(updated);
   } catch (err) {
@@ -124,6 +128,7 @@ router.put("/:email", protect, async (req, res) => {
   }
 });
 
+// DELETE
 router.delete("/:email", protect, async (req, res) => {
   try {
     const deleted = await User.findOneAndDelete({ email: req.params.email });

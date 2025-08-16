@@ -1,53 +1,91 @@
-const express = require('express');
-const fs = require('fs');
-const path = require('path');
+const express = require("express");
+const Reservation = require("../models/Reservation");
+const Catway = require("../models/Catway");
 const protect = require("../middleware/authMiddleware");
 
 const router = express.Router();
-const reservationsPath = path.join(__dirname, '../data/reservations.json');
 
-// Toutes les réservations
-router.get('/catways/:catwayNumber/reservations', protect, (req, res) => {
-  const reservations = JSON.parse(fs.readFileSync(reservationsPath, 'utf-8'));
-  res.json(reservations);
+// (Utile pour dashboard) GET /reservations → toutes
+router.get("/reservations", protect, async (_req, res) => {
+  const all = await Reservation.find().sort({ catwayNumber: 1, startDate: 1 });
+  res.json(all);
 });
 
-// Réservations d’un catway
-router.get('/catways/:catwayNumber/reservations', protect, (req, res) => {
-  const reservations = JSON.parse(fs.readFileSync(reservationsPath, 'utf-8'));
-  const filtered = reservations.filter(r => r.catwayNumber == req.params.catwayNumber);
-  res.json(filtered);
+// GET /catways/:id/reservations
+router.get("/:id/reservations", protect, async (req, res) => {
+  const catwayNumber = Number(req.params.id);
+  const list = await Reservation.find({ catwayNumber }).sort({ startDate: 1 });
+  res.json(list);
 });
 
-// Nouvelle réservation
-router.post('/:catwayNumber/reservations', protect, (req, res) => {
-  const reservations = JSON.parse(fs.readFileSync(reservationsPath, 'utf-8'));
-  const newReservation = { ...req.body, catwayNumber: parseInt(req.params.catwayNumber) };
-  reservations.push(newReservation);
-  fs.writeFileSync(reservationsPath, JSON.stringify(reservations, null, 2));
-  res.json(newReservation);
+// GET /catways/:id/reservations/:reservationId
+router.get("/:id/reservations/:reservationId", protect, async (req, res) => {
+  const r = await Reservation.findById(req.params.reservationId);
+  if (!r || r.catwayNumber !== Number(req.params.id)) {
+    return res.status(404).json({ message: "Réservation non trouvée" });
+  }
+  res.json(r);
 });
 
-// Modifier réservation
-router.put('/catways/:catwayNumber/reservations/:clientName', protect, (req, res) => {
-  const reservations = JSON.parse(fs.readFileSync(reservationsPath, 'utf-8'));
-  const index = reservations.findIndex(r =>
-    r.catwayNumber == req.params.catwayNumber && r.clientName === req.params.clientName
-  );
-  if (index === -1) return res.status(404).json({ message: "Réservation non trouvée" });
+// POST /catways/:id/reservations
+router.post("/:id/reservations", protect, async (req, res) => {
+  try {
+    const catwayNumber = Number(req.params.id);
+    const { clientName, boatName, startDate, endDate } = req.body;
 
-  reservations[index] = { ...reservations[index], ...req.body };
-  fs.writeFileSync(reservationsPath, JSON.stringify(reservations, null, 2));
-  res.json(reservations[index]);
+    // vérifier catway existant
+    const cw = await Catway.findOne({ catwayNumber });
+    if (!cw) return res.status(404).json({ message: "Catway inexistant" });
+
+    if (!clientName || !boatName || !startDate || !endDate) {
+      return res.status(400).json({ message: "Champs requis manquants" });
+    }
+    if (new Date(startDate) > new Date(endDate)) {
+      return res.status(400).json({ message: "startDate doit précéder endDate" });
+    }
+
+    const created = await Reservation.create({
+      catwayNumber,
+      clientName,
+      boatName,
+      startDate,
+      endDate
+    });
+
+    res.status(201).json(created);
+  } catch (e) {
+    res.status(400).json({ message: e.message });
+  }
 });
 
-// Supprimer réservation
-router.delete('/catways/:catwayNumber/reservations/:clientName', protect, (req, res) => {
-  let reservations = JSON.parse(fs.readFileSync(reservationsPath, 'utf-8'));
-  reservations = reservations.filter(r =>
-    !(r.catwayNumber == req.params.catwayNumber && r.clientName === req.params.clientName)
-  );
-  fs.writeFileSync(reservationsPath, JSON.stringify(reservations, null, 2));
+// PUT /catways/:id/reservations/:reservationId
+router.put("/:id/reservations/:reservationId", protect, async (req, res) => {
+  const r = await Reservation.findById(req.params.reservationId);
+  if (!r || r.catwayNumber !== Number(req.params.id)) {
+    return res.status(404).json({ message: "Réservation non trouvée" });
+  }
+
+  const { boatName, clientName, startDate, endDate } = req.body;
+  if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
+    return res.status(400).json({ message: "startDate doit précéder endDate" });
+  }
+
+  if (boatName !== undefined) r.boatName = boatName;
+  if (clientName !== undefined) r.clientName = clientName;
+  if (startDate !== undefined) r.startDate = startDate;
+  if (endDate !== undefined) r.endDate = endDate;
+
+  const saved = await r.save();
+  res.json(saved);
+});
+
+// DELETE /catways/:id/reservations/:reservationId
+router.delete("/:id/reservations/:reservationId", protect, async (req, res) => {
+  const r = await Reservation.findById(req.params.reservationId);
+  if (!r || r.catwayNumber !== Number(req.params.id)) {
+    return res.status(404).json({ message: "Réservation non trouvée" });
+  }
+  await r.deleteOne();
   res.json({ message: "Réservation supprimée" });
 });
 
